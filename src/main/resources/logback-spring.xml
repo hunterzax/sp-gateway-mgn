@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProfile name="file-logging">
+        <!-- Realtime Data Log -->
+        <appender name="REALTIME_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/realtime-data.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/realtime-data.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <!-- Event Data Log -->
+        <appender name="EVENT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/event-data.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/event-data.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- Specific Logger for RealtimeDataListener -->
+    <logger name="com.ptt.gateway.service.RealtimeDataListener" level="INFO" additivity="true">
+        <springProfile name="file-logging">
+            <appender-ref ref="REALTIME_FILE" />
+        </springProfile>
+    </logger>
+
+    <!-- Specific Logger for StatusMonitorService -->
+    <logger name="com.ptt.gateway.service.StatusMonitorService" level="INFO" additivity="false">
+        <springProfile name="file-logging">
+            <appender-ref ref="EVENT_FILE" />
+        </springProfile>
+        <springProfile name="!file-logging">
+            <appender-ref ref="CONSOLE" />
+        </springProfile>
+    </logger>
+
+    <!-- Root Logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

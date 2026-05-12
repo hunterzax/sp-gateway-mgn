@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.14'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+}
+
+group = 'com.ptt'
+version = '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // Explicitly declare Jackson to satisfy Snyk scanner
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+
+    // Explicitly declare Spring dependencies to satisfy Snyk scanner (bypassing springdoc 2.8.17 warnings)
+    implementation 'org.springframework:spring-web:6.2.18'
+    implementation 'org.springframework:spring-webmvc:6.2.18'
+    implementation 'org.springframework.boot:spring-boot:3.5.14'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure:3.5.14'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    runtimeOnly 'org.postgresql:postgresql:42.7.11'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'com.openpojo:openpojo:0.9.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == 'com.fasterxml.jackson.core' && details.requested.name == 'jackson-core') {
+            details.useVersion '2.21.2'
+            details.because 'aligns jackson-core with Spring Boot 3.5.14 BOM'
+        }
+        // CVE-2023-35116 (disputed): Force jackson-databind alignment to prevent stale transitive version detection
+        if (details.requested.group == 'com.fasterxml.jackson.core' && details.requested.name == 'jackson-databind') {
+            details.useVersion '2.21.2'
+            details.because 'aligns jackson-databind with Spring Boot 3.5.14 BOM - suppresses disputed CVE-2023-35116'
+        }
+        // CVE-2025-48924 (BDSA-2025-6881): Uncontrolled recursion in commons-lang3
+        if (details.requested.group == 'org.apache.commons' && details.requested.name == 'commons-lang3') {
+            details.useVersion '3.18.0'
+            details.because 'fixes CVE-2025-48924 (BDSA-2025-6881) - uncontrolled recursion vulnerability'
+        }
+        // BDSA-2026-8637 (CVE-2026-42198): DoS via SCRAM iteration count in PostgreSQL JDBC
+        if (details.requested.group == 'org.postgresql' && details.requested.name == 'postgresql') {
+            details.useVersion '42.7.11'
+            details.because 'fixes BDSA-2026-8637 (CVE-2026-42198) - client-side DoS vulnerability'
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs('--add-opens', 'java.base/java.time=ALL-UNNAMED')
+    finalizedBy jacocoTestReport
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+}

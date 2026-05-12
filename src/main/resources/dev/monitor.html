@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dev Monitor - WebSocket</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .message { border-bottom: 1px solid #ccc; padding: 5px; }
+        .tag { color: blue; }
+        .calc { color: green; }
+        #messages { max-height: 80vh; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h2>WebSocket Monitor (Topic: /topic/tags, /topic/calcs)</h2>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+
+    <script>
+        var stompClient = null;
+
+        function connect() {
+            var socket = new SockJS('/ws-endpoint');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                document.getElementById("status").innerText = "Connected";
+                console.log('Connected: ' + frame);
+                
+                stompClient.subscribe('/topic/tags', function (message) {
+                    showMessage(JSON.parse(message.body), 'tag');
+                });
+                
+                stompClient.subscribe('/topic/calcs', function (message) {
+                    showMessage(JSON.parse(message.body), 'calc');
+                });
+            }, function(error) {
+                 document.getElementById("status").innerText = "Error: " + error + ". Retrying...";
+                 setTimeout(connect, 5000);
+            });
+        }
+
+        function showMessage(data, type) {
+            var msgs = document.getElementById("messages");
+            var div = document.createElement("div");
+            div.className = "message " + type;
+            div.innerText = "[" + type.toUpperCase() + "] " + new Date().toLocaleTimeString() + " - " + JSON.stringify(data);
+            msgs.insertBefore(div, msgs.firstChild);
+            
+            if (msgs.childElementCount > 100) {
+                msgs.removeChild(msgs.lastChild);
+            }
+        }
+
+        connect();
+    </script>
+</body>
+</html>
